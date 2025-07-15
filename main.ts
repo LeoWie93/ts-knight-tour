@@ -5,44 +5,56 @@ interface Field {
     y: number;
 }
 
-function nextMoveKnight(board: number[][], currentField: Field, move: number): Field | null {
-    const x: number = currentField.x;
-    const y: number = currentField.y;
+interface PossibleMove {
+    moveCount: number;
+    field: Field;
+}
 
-    let newX: number | null = -1;
-    let newY: number | null = -1;
+function nextMovesFromCurrentPosition(board: number[][], currentField: Field): PossibleMove[] {
+    let nextMoves: PossibleMove[] = [];
+    const xMovement: number[] = [-1, 1, 2, 2, 1, -1, -2, -2];
+    const yMovement: number[] = [-2, -2, -1, +1, +2, +2, +1, -1];
 
-    if (move == 0) {
-        newX = x - 1;
-        newY = y - 2;
-    } else if (move == 1) {
-        newX = x + 1;
-        newY = y - 2;
-    } else if (move == 2) {
-        newX = x + 2;
-        newY = y - 1;
-    } else if (move == 3) {
-        newX = x + 2;
-        newY = y + 1;
-    } else if (move == 4) {
-        newX = x + 1;
-        newY = y + 2;
-    } else if (move == 5) {
-        newX = x - 1;
-        newY = y + 2;
-    } else if (move == 6) {
-        newX = x - 2;
-        newY = y + 1;
-    } else if (move == 7) {
-        newX = x - 2;
-        newY = y - 1;
+    let index: number = 0;
+    while (index < xMovement.length) {
+        const x: number = currentField.x + xMovement[index];
+        const y: number = currentField.y + yMovement[index];
+
+        if (0 <= x && 0 <= y && x < board[0].length && y < board.length) {
+            if (board[y][x] == 0) {
+                nextMoves.push({ "moveCount": 0, "field": { x: x, y: y } as Field });
+            }
+        }
+
+        index++;
     }
 
-    if (0 <= newX && 0 <= newY && newX < board[0].length && newY < board.length) {
-        return { x: newX, y: newY } as Field;
+    return nextMoves;
+}
+
+function nextKnightMoves(board: number[][], currentField: Field): Field[] {
+    let possibleMoves: PossibleMove[] = nextMovesFromCurrentPosition(board, currentField);
+
+    let index: number = 0;
+    while (index < possibleMoves.length) {
+        const possibleMove: Field = possibleMoves[index].field;
+        board[possibleMove.y][possibleMove.x] = 22;
+        possibleMoves[index].moveCount = nextMovesFromCurrentPosition(board, possibleMoves[index].field).length;
+        board[possibleMove.y][possibleMove.x] = 0;
+
+        index++;
     }
 
-    return null;
+    //sort by moveCount
+    possibleMoves = possibleMoves.sort((a, b) => {
+        if (a.moveCount == b.moveCount) {
+            return 0;
+        }
+
+        return a.moveCount > b.moveCount ? 1 : -1;
+    });
+
+    return possibleMoves.map(possibleMove => possibleMove.field);
 }
 
 
@@ -55,16 +67,13 @@ function findKnightPath(board: number[][], tryField: Field, level: number): bool
     } else {
         board[tryField.y][tryField.x] = level;
         let found: boolean = false;
-        let move: number = 0;
 
-        // get a list of possible moves, order by number of possible moves from that position on
-        // recurse of these moves
-        while (!found && move < 8) {
-            const newField: Field | null = nextMoveKnight(board, tryField, move);
-            if (newField != null && board[newField.y][newField.x] == 0) {
-                found = findKnightPath(board, newField, level + 1);
-            }
-            move++;
+        const moves: Field[] = nextKnightMoves(board, tryField);
+        let index: number = 0;
+        console.table(board);
+        while (!found && index < moves.length) {
+            found = findKnightPath(board, moves[index], level + 1);
+            index++;
         }
 
         if (!found) {
@@ -83,8 +92,8 @@ function solveForKnight(board: number[][], startField: Field): boolean {
 
 // init board
 const board: number[][] = [];
-const rows: number = 6;
-const cols: number = 6;
+const rows: number = 11;
+const cols: number = 11;
 
 for (let i: number = 0; i < rows; i++) {
     board[i] = [];
@@ -94,7 +103,7 @@ for (let i: number = 0; i < rows; i++) {
 }
 
 
-const found = solveForKnight(board, { x: 1, y: 0 } as Field);
+const found = solveForKnight(board, { x: 3, y: 3 } as Field);
 console.table(board);
 console.log("Found?", found);
 
